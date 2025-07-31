@@ -2,13 +2,15 @@ import { useState } from "react";
 import { supabase } from "../services/supabaseClient";
 import { useRouter } from "next/router";
 import { Eye, EyeOff } from "lucide-react";
-import { FcGoogle } from "react-icons/fc";
 
 import Header from "../components/Header";
 import Footer from "../components/Footer";
 import { emailRegex, strongPasswordRegex } from "../constants/regexes";
+import { FcGoogle } from "react-icons/fc";
 
-export default function LoginPage() {
+export default function SignUpPage() {
+  const router = useRouter();
+
   const [email, setEmail] = useState("");
   const [emailError, setEmailError] = useState<string | null>(null);
 
@@ -16,10 +18,8 @@ export default function LoginPage() {
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
 
-  const [loginError, setLoginError] = useState<string | null>(null);
+  const [signUpError, setSignUpError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-
-  const router = useRouter();
 
   const validateEmail = (value: string) => {
     const isValid = emailRegex.test(value);
@@ -38,45 +38,42 @@ export default function LoginPage() {
     }
   };
 
-  const handleEmailLogin = async () => {
-    if (emailError || !email) {
-      setLoginError("Please provide a valid email.");
+  const handleEmailSignUp = async () => {
+    setSignUpError(null);
+
+    if (!strongPasswordRegex.test(password)) {
+      setSignUpError(
+        "Password must have upper, lower case letters, symbol, and be at least 6 characters."
+      );
       return;
     }
 
-    setLoginError(null);
     setIsLoading(true);
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-    setIsLoading(false);
+    const { error } = await supabase.auth.signUp({ email, password });
 
     if (error) {
-      switch (error.message) {
-        case "Invalid login credentials":
-          setLoginError("Incorrect email or password.");
-          break;
-        default:
-          setLoginError(error.message);
-      }
+      setSignUpError(error.message);
     } else {
-      router.push("/chat");
+      alert("Check your email to confirm sign-up!");
+      router.push("/chat"); // Or stay on page if you wait for confirmation
     }
+
+    setIsLoading(false);
   };
 
-  const handleGoogleLogin = async () => {
+  const handleGoogleSignUp = async () => {
+    setIsLoading(true);
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: "http://localhost:3000/chat", // or your deployed domain
+        redirectTo: "http://localhost:3000/chat", // or your deployed URL
       },
     });
 
     if (error) {
-      console.error("Google login error:", error.message);
-      // Show UI error if needed
+      setSignUpError(error.message);
     }
+    setIsLoading(false);
   };
 
   return (
@@ -85,24 +82,19 @@ export default function LoginPage() {
 
       <main className="flex-grow flex items-center justify-center px-4 transition-colors duration-500">
         <div className="w-full max-w-md p-8 bg-white dark:bg-zinc-800 shadow-3xl border border-[1px] border-[rgba(59,130,246,0.15)] rounded-lg transition">
-          <h2 className="text-3xl font-bold text-center mb-2">Welcome Back</h2>
+          <h2 className="text-3xl font-bold text-center mb-2">
+            Create Account
+          </h2>
           <p className="text-sm text-center text-gray-500 dark:text-gray-300 mb-6">
-            Log in to continue your AI journey
+            Sign up to start using the AI chat
           </p>
+
           <div className="space-y-4">
             <div>
               <input
                 type="email"
                 placeholder="Email"
-                className={`w-full p-3 rounded-md border ${
-                  emailError
-                    ? "border-red-500"
-                    : "border-gray-300 dark:border-gray-600"
-                } bg-white dark:bg-zinc-800 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 transition focus:outline-none focus:ring-2 ${
-                  emailError
-                    ? "focus:ring-red-500 focus:shadow-[0_0_8px_rgba(239,68,68,0.4)]"
-                    : "focus:ring-blue-400 focus:shadow-[0_0_8px_rgba(59,130,246,0.4)]"
-                }`}
+                className="w-full p-3 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-zinc-800 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 transition focus:outline-none focus:ring-2 focus:ring-blue-400 focus:shadow-[0_0_8px_rgba(59,130,246,0.4)]"
                 value={email}
                 onChange={(e) => {
                   setEmail(e.target.value);
@@ -138,19 +130,19 @@ export default function LoginPage() {
               )}
             </div>
 
-            {loginError && (
-              <div className="bg-red-100 border border-red-300 text-red-700 text-sm rounded p-3 transition dark:bg-red-900/30 dark:border-red-700 dark:text-red-300">
-                {loginError}
+            {signUpError && (
+              <div className="bg-red-100 border border-red-300 text-red-700 text-sm rounded p-3 dark:bg-red-900/30 dark:border-red-700 dark:text-red-300 transition">
+                {signUpError}
               </div>
             )}
           </div>
 
           <button
-            onClick={handleEmailLogin}
+            onClick={handleEmailSignUp}
             disabled={!!passwordError || !!emailError || isLoading}
-            className="w-full bg-[var(--primary)] text-white py-3 mt-6 rounded-md hover:bg-blue-600 transition font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full bg-[var(--primary)] text-white py-3 mt-6 rounded-md hover:bg-blue-600 transition font-medium"
           >
-            {isLoading ? "Logging in..." : "Login"}
+            {isLoading ? "Signing up..." : "Sign Up"}
           </button>
 
           <div className="relative flex items-center py-2">
@@ -162,20 +154,21 @@ export default function LoginPage() {
           </div>
 
           <button
-            onClick={handleGoogleLogin}
-            className="w-full flex items-center justify-center gap-3 border border-gray-300 dark:border-gray-600 bg-white dark:bg-zinc-900 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-zinc-800 py-3 rounded-md transition font-medium shadow-sm hover:shadow-md"
+            onClick={handleGoogleSignUp}
+            disabled={isLoading}
+            className="w-full flex items-center justify-center gap-3 border border-gray-300 dark:border-gray-600 py-3 rounded-md hover:bg-gray-100 dark:hover:bg-zinc-700 transition font-medium disabled:opacity-50"
           >
             <FcGoogle size={20} />
-            <span>Continue with Google</span>
+            Continue with Google
           </button>
 
           <p className="text-center text-sm text-gray-600 dark:text-gray-400 pt-5">
-            Don’t have an account?{" "}
+            Already have an account?{" "}
             <span
-              onClick={() => router.push("/signup")}
+              onClick={() => router.push("/login")}
               className="text-blue-600 hover:underline cursor-pointer"
             >
-              Sign up
+              Log in
             </span>
           </p>
         </div>
