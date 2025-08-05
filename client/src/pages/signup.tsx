@@ -81,7 +81,7 @@ export default function SignUpPage() {
       <Header />
 
       <main className="flex-grow flex items-center justify-center px-4 transition-colors duration-500">
-        <div className="w-full max-w-md p-8 bg-white dark:bg-zinc-800 shadow-3xl border border-[1px] border-[rgba(59,130,246,0.15)] rounded-lg transition">
+        <div className="w-full max-w-md p-8 bg-white dark:bg-zinc-800 shadow-3xl border-[1px] border-[rgba(59,130,246,0.15)] rounded-lg transition">
           <h2 className="text-3xl font-bold text-center mb-2">
             Create Account
           </h2>

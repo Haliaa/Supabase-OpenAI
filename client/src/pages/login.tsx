@@ -10,10 +10,11 @@ import { emailRegex, strongPasswordRegex } from "../constants/regexes";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
-  const [emailError, setEmailError] = useState<string | null>(null);
-
   const [password, setPassword] = useState("");
+   
+  const [emailError, setEmailError] = useState<string | null>(null);
   const [passwordError, setPasswordError] = useState<string | null>(null);
+  
   const [showPassword, setShowPassword] = useState(false);
 
   const [loginError, setLoginError] = useState<string | null>(null);
@@ -84,7 +85,7 @@ export default function LoginPage() {
       <Header />
 
       <main className="flex-grow flex items-center justify-center px-4 transition-colors duration-500">
-        <div className="w-full max-w-md p-8 bg-white dark:bg-zinc-800 shadow-3xl border border-[1px] border-[rgba(59,130,246,0.15)] rounded-lg transition">
+        <div className="w-full max-w-md p-8 bg-white dark:bg-zinc-800 shadow-3xl border-[1px] border-[rgba(59,130,246,0.15)] rounded-lg transition">
           <h2 className="text-3xl font-bold text-center mb-2">Welcome Back</h2>
           <p className="text-sm text-center text-gray-500 dark:text-gray-300 mb-6">
             Log in to continue your AI journey
