@@ -12,7 +12,7 @@ interface Message {
   timestamp: Date;
 }
 
-export default function ChatPage() {
+export default function AskAIPage() {
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
   const [user, setUser] = useState<any>(null);

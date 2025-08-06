@@ -3,21 +3,41 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { supabase } from "../services/supabaseClient";
-import { Menu, X, MessageCircleMore, LogIn, LogOut } from "lucide-react";
+import { Menu, X, MessageCircleMore, LogIn, LogOut, Users, Sun, Moon } from "lucide-react";
 
 export default function Header() {
   const [user, setUser] = useState<any>(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [isDarkMode, setIsDarkMode] = useState(false);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
       setUser(data.user);
     });
+    
+    // Check for dark mode preference
+    const darkMode = localStorage.getItem('darkMode') === 'true';
+    setIsDarkMode(darkMode);
+    if (darkMode) {
+      document.documentElement.classList.add('dark');
+    }
   }, []);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
     location.href = "/login";
+  };
+
+  const toggleTheme = () => {
+    const newDarkMode = !isDarkMode;
+    setIsDarkMode(newDarkMode);
+    localStorage.setItem('darkMode', newDarkMode.toString());
+    
+    if (newDarkMode) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
   };
 
   return (
@@ -30,12 +50,34 @@ export default function Header() {
         {/* Desktop Menu */}
         <nav className="hidden md:flex space-x-6 items-center">
           <Link
-            href="/chat"
+            href="/ask-ai"
             className="flex items-center gap-1 text-gray-700 dark:text-gray-200 hover:text-blue-600 dark:hover:text-blue-400"
           >
             <MessageCircleMore size={18} />
-            Chat
+            Ask AI
           </Link>
+
+          {user && (
+            <Link
+              href="/group-chat"
+              className="flex items-center gap-1 text-gray-700 dark:text-gray-200 hover:text-blue-600 dark:hover:text-blue-400"
+            >
+              <Users size={18} />
+              Group Chat
+            </Link>
+          )}
+
+          <button
+            onClick={toggleTheme}
+            className="flex items-center justify-center w-8 h-8 rounded-full bg-gray-100 dark:bg-zinc-700 hover:bg-gray-200 dark:hover:bg-zinc-600 transition-colors duration-200"
+            title={isDarkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
+          >
+            {isDarkMode ? (
+              <Sun size={16} className="text-gray-600 dark:text-gray-300" />
+            ) : (
+              <Moon size={16} className="text-gray-600 dark:text-gray-300" />
+            )}
+          </button>
 
           {!user ? (
             <Link
@@ -70,12 +112,34 @@ export default function Header() {
       {menuOpen && (
         <div className="md:hidden mt-2 space-y-2 px-2 pb-4 border-t border-gray-200 dark:border-zinc-700">
           <Link
-            href="/chat"
+            href="/ask-ai"
             className="flex items-center gap-2 text-gray-700 dark:text-gray-200 hover:text-blue-600 dark:hover:text-blue-400"
           >
             <MessageCircleMore size={18} />
-            Chat
+            Ask AI
           </Link>
+
+          {user && (
+            <Link
+              href="/group-chat"
+              className="flex items-center gap-2 text-gray-700 dark:text-gray-200 hover:text-blue-600 dark:hover:text-blue-400"
+            >
+              <Users size={18} />
+              Group Chat
+            </Link>
+          )}
+
+          <button
+            onClick={toggleTheme}
+            className="flex items-center justify-center w-8 h-8 rounded-full bg-gray-100 dark:bg-zinc-700 hover:bg-gray-200 dark:hover:bg-zinc-600 transition-colors duration-200"
+            title={isDarkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
+          >
+            {isDarkMode ? (
+              <Sun size={16} className="text-gray-600 dark:text-gray-300" />
+            ) : (
+              <Moon size={16} className="text-gray-600 dark:text-gray-300" />
+            )}
+          </button>
 
           {!user ? (
             <Link

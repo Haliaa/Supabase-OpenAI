@@ -55,7 +55,7 @@ export default function SignUpPage() {
       setSignUpError(error.message);
     } else {
       alert("Check your email to confirm sign-up!");
-      router.push("/chat"); // Or stay on page if you wait for confirmation
+      router.push("/ask-ai"); // Or stay on page if you wait for confirmation
     }
 
     setIsLoading(false);
@@ -66,7 +66,7 @@ export default function SignUpPage() {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: "http://localhost:3000/chat", // or your deployed URL
+        redirectTo: "http://localhost:3000/ask-ai", // or your deployed URL
       },
     });
 
