@@ -54,7 +54,7 @@ A secure Express.js backend server for the AI Chat Assistant application with Su
    Create a `.env` file in the server root directory:
    ```env
    # Server Configuration
-   PORT=3001
+   PORT=3000
    NODE_ENV=development
    
    # Supabase Configuration
@@ -81,7 +81,7 @@ A secure Express.js backend server for the AI Chat Assistant application with Su
 
 | Variable | Description | Required | Default |
 |----------|-------------|----------|---------|
-| `PORT` | Server port | No | 3001 |
+| `PORT` | Server port | No | 3000 |
 | `NODE_ENV` | Environment mode | No | development |
 | `SUPABASE_URL` | Supabase project URL | Yes | - |
 | `SUPABASE_ANON_KEY` | Supabase anonymous key | Yes | - |
