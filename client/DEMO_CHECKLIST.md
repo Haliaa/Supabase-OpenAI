@@ -37,10 +37,10 @@
 - [ ] Send 1st message - show "Remaining queries: 2"
 - [ ] Send 2nd message - show "Remaining queries: 1"
 - [ ] Send 3rd message - show "Remaining queries: 0"
-- [ ] Send 4th message - show login prompt
+- [ ] Send 4th message - show "Lifetime limit reached" prompt
 - [ ] **Login with Google/email**
-- [ ] Show "Remaining queries: 5" (additional requests)
-- [ ] Continue until limit reached
+- [ ] Show "Remaining queries: 8" (3 bonus + 5 daily)
+- [ ] Continue until daily limit reached
 
 ### 4. **Bypass Prevention Demo (3 minutes)**
 - [ ] Try incognito mode - still tracked
@@ -66,11 +66,14 @@
 "Today I'm showcasing an AI chat application with enterprise-grade rate limiting. This isn't just another chat app - it's a production-ready solution that prevents abuse while maintaining a great user experience."
 
 ### Key Points to Emphasize
-1. **95% bypass prevention** - Most users can't get around the limits
-2. **Industry-standard approach** - Used by major companies
-3. **Privacy compliant** - GDPR/CCPA ready
-4. **Cost-effective** - Much cheaper than complex solutions
-5. **Real-world ready** - Can be deployed immediately
+1. **Lifetime limits for unauthenticated users** - Once used, they're gone forever
+2. **Daily reset for authenticated users** - Fresh 5 requests every day
+3. **Bonus requests for new users** - 3 extra if never used while unauthenticated
+4. **95% bypass prevention** - Most users can't get around the limits
+5. **Industry-standard approach** - Used by major companies
+6. **Privacy compliant** - GDPR/CCPA ready
+7. **Cost-effective** - Much cheaper than complex solutions
+8. **Real-world ready** - Can be deployed immediately
 
 ### Technical Highlights
 - **Browser fingerprinting** with 99.5% accuracy

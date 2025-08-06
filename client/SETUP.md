@@ -30,7 +30,6 @@ Run the updated SQL script in your Supabase SQL editor:
 CREATE TABLE ai_requests (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
-    counter INTEGER DEFAULT 1,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     ip TEXT,
     fingerprint_hash TEXT, -- Browser fingerprint hash

@@ -15,7 +15,6 @@ DROP TABLE IF EXISTS ai_requests;
 CREATE TABLE ai_requests (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
-    counter INTEGER DEFAULT 1,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     ip TEXT,
     -- New fields for robust tracking
