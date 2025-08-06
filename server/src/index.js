@@ -3,13 +3,137 @@ const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
 const rateLimit = require('express-rate-limit');
+const { createServer } = require('http');
+const { Server } = require('socket.io');
 require('dotenv').config();
 
-// Import routes
+// Import routes and config
 const adminRoutes = require('./routes/admin');
+const { supabase } = require('./config/supabase');
 
 const app = express();
-const PORT = process.env.PORT || 3001;
+const server = createServer(app);
+const io = new Server(server, {
+  cors: {
+    origin: [process.env.CORS_ORIGIN || 'http://localhost:3000'],
+    credentials: true,
+    methods: ['GET', 'POST']
+  }
+});
+
+const PORT = process.env.PORT || 5002;
+
+// Store connected users
+const connectedUsers = new Map();
+
+// Socket.IO authentication middleware
+io.use(async (socket, next) => {
+  try {
+    const token = socket.handshake.auth.token;
+    
+    if (!token) {
+      return next(new Error('Authentication token required'));
+    }
+
+    // Verify token with Supabase
+    const { data: { user }, error } = await supabase.auth.getUser(token);
+    
+    if (error || !user) {
+      return next(new Error('Invalid authentication token'));
+    }
+
+    // Add user info to socket
+    console.log("user",user);
+    
+    socket.user = {
+      id: user.id,
+      email: user.email,
+      name: user.user_metadata?.name || user.email.split('@')[0],
+      role: user.user_metadata?.role || 'user'
+    };
+
+    next();
+  } catch (error) {
+    console.error('Socket auth error:', error);
+    next(new Error('Authentication failed'));
+  }
+});
+
+// Socket.IO connection handler
+io.on('connection', (socket) => {
+  console.log(`User connected: ${socket.user.email} (${socket.user.id})`);
+  
+  // Add user to connected users map
+  connectedUsers.set(socket.user.id, {
+    socketId: socket.id,
+    user: socket.user,
+    connectedAt: new Date()
+  });
+
+  // Join the general chat room
+  socket.join('general');
+  
+  // Emit user joined event
+  socket.to('general').emit('user_joined', {
+    user: socket.user,
+    timestamp: new Date(),
+    message: `${socket.user.name} joined the chat`
+  });
+
+  // Send current online users to the new user
+  const onlineUsers = Array.from(connectedUsers.values()).map(u => u.user);
+  socket.emit('online_users', onlineUsers);
+
+  // Handle chat messages
+  socket.on('send_message', (data) => {
+    const message = {
+      id: Date.now().toString(),
+      user: socket.user,
+      content: data.content,
+      timestamp: new Date(),
+      type: 'message'
+    };
+
+    // Broadcast message to all users in the room
+    io.to('general').emit('new_message', message);
+    
+    console.log(`Message from ${socket.user.email}: ${data.content}`);
+  });
+
+  // Handle typing events
+  socket.on('typing_start', () => {
+    socket.to('general').emit('user_typing', {
+      user: socket.user,
+      isTyping: true
+    });
+  });
+
+  socket.on('typing_stop', () => {
+    socket.to('general').emit('user_typing', {
+      user: socket.user,
+      isTyping: false
+    });
+  });
+
+  // Handle disconnection
+  socket.on('disconnect', () => {
+    console.log(`User disconnected: ${socket.user.email} (${socket.user.id})`);
+    
+    // Remove user from connected users
+    connectedUsers.delete(socket.user.id);
+    
+    // Emit user left event
+    socket.to('general').emit('user_left', {
+      user: socket.user,
+      timestamp: new Date(),
+      message: `${socket.user.name} left the chat`
+    });
+
+    // Update online users for remaining users
+    const onlineUsers = Array.from(connectedUsers.values()).map(u => u.user);
+    io.to('general').emit('online_users', onlineUsers);
+  });
+});
 
 // Security middleware
 app.use(helmet({
@@ -25,7 +149,7 @@ app.use(helmet({
 
 // CORS configuration
 app.use(cors({
-  origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
+  origin: [process.env.CORS_ORIGIN || 'http://localhost:3000', 'http://localhost:3001'],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'x-session-id']
@@ -65,7 +189,8 @@ app.get('/health', (req, res) => {
     status: 'healthy',
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
-    environment: process.env.NODE_ENV || 'development'
+    environment: process.env.NODE_ENV || 'development',
+    connectedUsers: connectedUsers.size
   });
 });
 
@@ -79,7 +204,8 @@ app.get('/', (req, res) => {
     version: '1.0.0',
     endpoints: {
       admin: '/api/admin',
-      health: '/health'
+      health: '/health',
+      socket: 'WebSocket connection available'
     },
     documentation: 'Check the README for API documentation'
   });
@@ -134,9 +260,10 @@ app.use((error, req, res, next) => {
 });
 
 // Start server
-app.listen(PORT, () => {
+server.listen(PORT, () => {
   console.log(`🎯 Port ${PORT} | ${process.env.NODE_ENV || 'development'}`);
   console.log(`🔗 Health check: http://localhost:${PORT}/health`);
+  console.log(`🔌 Socket.IO ready on port ${PORT}`);
   
   // Check required environment variables
   const requiredEnvVars = [
@@ -161,23 +288,33 @@ app.listen(PORT, () => {
 // Graceful shutdown
 process.on('SIGTERM', () => {
   console.log('SIGTERM received, shutting down gracefully');
-  process.exit(0);
+  server.close(() => {
+    console.log('Server closed');
+    process.exit(0);
+  });
 });
 
 process.on('SIGINT', () => {
   console.log('SIGINT received, shutting down gracefully');
-  process.exit(0);
+  server.close(() => {
+    console.log('Server closed');
+    process.exit(0);
+  });
 });
 
 // Handle uncaught exceptions
 process.on('uncaughtException', (error) => {
   console.error('Uncaught Exception:', error);
-  process.exit(1);
+  server.close(() => {
+    process.exit(1);
+  });
 });
 
 process.on('unhandledRejection', (reason, promise) => {
   console.error('Unhandled Rejection at:', promise, 'reason:', reason);
-  process.exit(1);
+  server.close(() => {
+    process.exit(1);
+  });
 });
 
-module.exports = app; 
+module.exports = { app, server, io }; 
