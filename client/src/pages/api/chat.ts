@@ -23,6 +23,29 @@ function getClientIp(req: NextApiRequest) {
     : req.socket.remoteAddress || "unknown";
 }
 
+// Session management functions
+function getSessionId(req: NextApiRequest): string {
+  // Try to get session from cookie first
+  const sessionCookie = req.cookies['ai_session_id'];
+  if (sessionCookie) {
+    return sessionCookie;
+  }
+  
+  // Try to get from headers
+  const sessionHeader = req.headers['x-session-id'] as string;
+  if (sessionHeader) {
+    return sessionHeader;
+  }
+  
+  // Generate new session ID
+  return randomUUID();
+}
+
+function setSessionCookie(res: NextApiResponse, sessionId: string) {
+  // Set session cookie for 24 hours
+  res.setHeader('Set-Cookie', `ai_session_id=${sessionId}; Path=/; HttpOnly; Max-Age=86400; SameSite=Lax`);
+}
+
 // Mock responses for development/testing
 function getMockResponse(input: string): string {
   const responses = [
@@ -43,10 +66,14 @@ export default async function handler(
     return res.status(405).json({ error: "Method Not Allowed" });
   }
 
-  const { input } = req.body;
+  const { input, fingerprint, deviceInfo } = req.body;
   if (!input || typeof input !== "string") {
     return res.status(400).json({ error: "Missing or invalid input" });
   }
+
+  // Get session ID and set cookie if needed
+  const sessionId = getSessionId(req);
+  setSessionCookie(res, sessionId);
 
   // Get Supabase user
   const token = req.headers.authorization?.replace("Bearer ", "");
@@ -76,24 +103,80 @@ export default async function handler(
   }
 
   const ip = getClientIp(req);
-  const requestUserId = user_id || ip;
 
-  // Check rate limits
+  // Enhanced rate limiting with multiple tracking methods
   try {
-    if (isAuthenticated) {
-      // For authenticated users, count all their requests
-      const { count, error } = await supabase
-        .from("ai_requests")
-        .select("*", { count: "exact", head: true })
-        .eq("user_id", user_id);
+    if (isAuthenticated){      // For authenticated users, check both their authenticated requests AND previous unauthenticated requests
+      const [authCount, fingerprintCount, sessionCount, ipCount] = await Promise.all([
+        // Count authenticated requests by user_id
+        supabase
+          .from("ai_requests")
+          .select("*", { count: "exact", head: true })
+          .eq("user_id", user_id)
+          .then(({ count, error }) => {
+            if (error) {
+              console.error("Auth count error:", error);
+              return 0;
+            }
+            return count as number;
+          }),
+        
+        // Count previous unauthenticated requests by fingerprint
+        fingerprint ? supabase
+          .from("ai_requests")
+          .select("*", { count: "exact", head: true })
+          .eq("fingerprint_hash", fingerprint)
+          .is("user_id", null) // Only count unauthenticated requests
+          .then(({ count, error }) => {
+            if (error) {
+              console.error("Fingerprint count error:", error);
+              return 0;
+            }
+            return count as number;
+          }) : Promise.resolve(0),
+        
+        // Count previous unauthenticated requests by session
+        supabase
+          .from("ai_requests")
+          .select("*", { count: "exact", head: true })
+          .eq("session_id", sessionId)
+          .is("user_id", null) // Only count unauthenticated requests
+          .then(({ count, error }) => {
+            if (error) {
+              console.error("Session count error:", error);
+              return 0;
+            }
+            return count as number;
+          }),
+        
+        // Count previous unauthenticated requests by IP
+        supabase
+          .from("ai_requests")
+          .select("*", { count: "exact", head: true })
+          .eq("ip", ip)
+          .is("user_id", null) // Only count unauthenticated requests
+          .then(({ count, error }) => {
+            if (error) {
+              console.error("IP count error:", error);
+              return 0;
+            }
+            return count as number;
+          })
+      ]);
 
-      if (error) {
-        console.error("Supabase error:", error);
-        return res.status(500).json({ error: "Database error" });
-      }
-
-      currentCount = count as number;
-      console.log(`Authenticated user ${user_id} has ${currentCount} requests`);
+      // Total count = authenticated requests + max of unauthenticated requests
+      const unauthenticatedCount = Math.max(fingerprintCount, sessionCount, ipCount);
+      currentCount = authCount + unauthenticatedCount;
+      
+      console.log(`Authenticated user ${user_id} tracking:`, {
+        authCount,
+        unauthenticatedCount,
+        fingerprint: fingerprint ? fingerprint.substring(0, 8) + '...' : 'none',
+        sessionId: sessionId.substring(0, 8) + '...',
+        ip: ip,
+        counts: { authCount, fingerprintCount, sessionCount, ipCount },
+        totalCount: currentCount
+      });
 
       if (currentCount >= AUTH_LIMIT) {
         return res.status(429).json({ 
@@ -103,19 +186,59 @@ export default async function handler(
         });
       }
     } else {
-      // For unauthenticated users, count requests by IP
-      const { count, error } = await supabase
-        .from("ai_requests")
-        .select("*", { count: "exact", head: true })
-        .eq("ip", ip);
+      // For unauthenticated users, use multiple tracking methods
+      // Get counts for each tracking method
+      const [fingerprintCount, sessionCount, ipCount] = await Promise.all([
+        // Count by fingerprint
+        fingerprint ? supabase
+          .from("ai_requests")
+          .select("*", { count: "exact", head: true })
+          .eq("fingerprint_hash", fingerprint)
+          .then(({ count, error }) => {
+            if (error) {
+              console.error("Fingerprint count error:", error);
+              return 0;
+            }
+            return count as number;
+          }) : Promise.resolve(0),
+        
+        // Count by session
+        supabase
+          .from("ai_requests")
+          .select("*", { count: "exact", head: true })
+          .eq("session_id", sessionId)
+          .then(({ count, error }) => {
+            if (error) {
+              console.error("Session count error:", error);
+              return 0;
+            }
+            return count as number;
+          }),
+        
+        // Count by IP (fallback)
+        supabase
+          .from("ai_requests")
+          .select("*", { count: "exact", head: true })
+          .eq("ip", ip)
+          .then(({ count, error }) => {
+            if (error) {
+              console.error("IP count error:", error);
+              return 0;
+            }
+            return count as number;
+          })
+      ]);
 
-      if (error) {
-        console.error("Supabase error:", error);
-        return res.status(500).json({ error: "Database error" });
-      }
-
-      currentCount = count as number;
-      console.log(`Unauthenticated user (IP: ${ip}) has ${currentCount} requests`);
+      // Use the maximum count (most restrictive)
+      currentCount = Math.max(fingerprintCount, sessionCount, ipCount);
+      
+      console.log(`Unauthenticated user tracking:`, {
+        fingerprint: fingerprint ? fingerprint.substring(0, 8) + '...' : 'none',
+        sessionId: sessionId.substring(0, 8) + '...',
+        ip: ip,
+        counts: { fingerprintCount, sessionCount, ipCount },
+        maxCount: currentCount
+      });
 
       if (currentCount >= UNAUTH_LIMIT) {
         return res.status(429).json({ 
@@ -132,16 +255,21 @@ export default async function handler(
   }
 
   // Check if OpenAI API key is configured
-  if (!OPENAI_API_KEY && !DEV_MODE) {
+  if (!OPENAI_API_KEY) {
     console.error("OPENAI_API_KEY is not configured");
     return res.status(500).json({ error: "OpenAI API key is not configured" });
   }
 
-  // Development mode - return mock response
-  if (DEV_MODE && !OPENAI_API_KEY) {
+  // Only use mock responses if no OpenAI API key is available
+  if (!OPENAI_API_KEY) {
     const mockReply = getMockResponse(input);
     
-    // Log successful request to database
+    // Calculate remaining queries (before counting the current request)
+    const remainingQueries = isAuthenticated 
+      ? Math.max(0, AUTH_LIMIT - currentCount - 1)
+      : Math.max(0, UNAUTH_LIMIT - currentCount - 1);
+    
+    // Log successful request to database with enhanced tracking
     let insertSuccess = false;
     try {
       const { error: insertErr } = await supabase.from("ai_requests").insert([
@@ -149,6 +277,10 @@ export default async function handler(
           user_id: user_id,
           ip: ip,
           counter: 1,
+          fingerprint_hash: fingerprint || null,
+          session_id: sessionId,
+          user_agent: deviceInfo?.userAgent || req.headers['user-agent'] || null,
+          device_info: deviceInfo || null,
         },
       ]);
 
@@ -167,12 +299,10 @@ export default async function handler(
     if (!insertSuccess) {
       currentCount += 1;
       console.log(`Database insertion failed, manually counting request. New count: ${currentCount}`);
+    } else {
+      // If insertion was successful, increment the count to reflect the current request
+      currentCount += 1;
     }
-
-    // Calculate remaining queries
-    const remainingQueries = isAuthenticated 
-      ? Math.max(0, AUTH_LIMIT - currentCount)
-      : Math.max(0, UNAUTH_LIMIT - currentCount);
 
     return res.status(200).json({ 
       reply: mockReply,
@@ -219,19 +349,8 @@ export default async function handler(
       
       // Handle specific OpenAI errors
       if (errorData.error?.code === 'insufficient_quota') {
-        // In development mode, fall back to mock response
-        if (DEV_MODE) {
-          const mockReply = getMockResponse(input);
-          return res.status(200).json({ 
-            reply: mockReply + "\n\n[Note: Using mock response due to OpenAI quota limit]",
-            remainingQueries: null,
-            devMode: true,
-            quotaExceeded: true
-          });
-        }
-        
         return res.status(503).json({ 
-          error: "OpenAI service is currently unavailable due to quota limits. Please try again later or contact support.",
+          error: "OpenAI service is currently unavailable due to quota limits. Please check your billing or try again later.",
           errorType: "quota_exceeded"
         });
       } else if (errorData.error?.code === 'invalid_api_key') {
@@ -255,7 +374,12 @@ export default async function handler(
     const json = await openaiRes.json();
     const reply = json?.choices?.[0]?.message?.content || "No response received from AI";
 
-    // Log successful request to database (only count successful responses)
+    // Calculate remaining queries (before counting the current request)
+    const remainingQueries = isAuthenticated 
+      ? Math.max(0, AUTH_LIMIT - currentCount - 1)
+      : Math.max(0, UNAUTH_LIMIT - currentCount - 1);
+
+    // Log successful request to database with enhanced tracking (only count successful responses)
     let insertSuccess = false;
     try {
       const { error: insertErr } = await supabase.from("ai_requests").insert([
@@ -263,6 +387,10 @@ export default async function handler(
           user_id: user_id,
           ip: ip,
           counter: 1,
+          fingerprint_hash: fingerprint || null,
+          session_id: sessionId,
+          user_agent: deviceInfo?.userAgent || req.headers['user-agent'] || null,
+          device_info: deviceInfo || null,
         },
       ]);
 
@@ -281,12 +409,10 @@ export default async function handler(
     if (!insertSuccess) {
       currentCount += 1;
       console.log(`Database insertion failed, manually counting request. New count: ${currentCount}`);
+    } else {
+      // If insertion was successful, increment the count to reflect the current request
+      currentCount += 1;
     }
-
-    // Calculate remaining queries
-    const remainingQueries = isAuthenticated 
-      ? Math.max(0, AUTH_LIMIT - currentCount)
-      : Math.max(0, UNAUTH_LIMIT - currentCount);
 
     return res.status(200).json({ 
       reply,

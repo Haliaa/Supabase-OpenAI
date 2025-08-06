@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { supabase } from "../services/supabaseClient";
 import Header from "../components/Header";
 import Footer from "@/components/Footer";
 import { useRouter } from "next/router";
+import { getBrowserFingerprint, getDeviceInfo } from "../utils/fingerprint";
 
 interface Message {
   id: string;
@@ -19,12 +20,18 @@ export default function ChatPage() {
   const [remainingQueries, setRemainingQueries] = useState<number | null>(null);
   const [showLoginPrompt, setShowLoginPrompt] = useState(false);
   const router = useRouter();
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
       if (data.user) setUser(data.user);
     });
   }, []);
+
+  // Auto-scroll to bottom when messages change
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages, isLoading]);
 
   const sendMessage = async () => {
     if (!input.trim() || isLoading) return;
@@ -46,6 +53,10 @@ export default function ChatPage() {
     } = await supabase.auth.getSession();
 
     try {
+      // Get browser fingerprint and device info
+      const fingerprint = await getBrowserFingerprint();
+      const deviceInfo = getDeviceInfo();
+
       const headers: Record<string, string> = {
         "Content-Type": "application/json",
       };
@@ -58,7 +69,11 @@ export default function ChatPage() {
       const res = await fetch("/api/chat", {
         method: "POST",
         headers,
-        body: JSON.stringify({ input: userMessage.content }),
+        body: JSON.stringify({ 
+          input: userMessage.content,
+          fingerprint: fingerprint,
+          deviceInfo: deviceInfo
+        }),
       });
 
       const data = await res.json();
@@ -218,6 +233,9 @@ export default function ChatPage() {
                 </div>
               </div>
             )}
+
+            {/* Invisible div for auto-scroll target */}
+            <div ref={messagesEndRef} />
           </div>
 
           {/* Input */}
