@@ -27,7 +27,6 @@ The system uses **4 different tracking methods** simultaneously:
 CREATE TABLE ai_requests (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
-    counter INTEGER DEFAULT 1,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     ip TEXT,
     fingerprint_hash TEXT, -- Browser fingerprint hash

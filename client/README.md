@@ -15,12 +15,13 @@ A modern, secure AI chat application built with Next.js, OpenAI, and Supabase. F
 ## 🚀 Rate Limiting System
 
 ### **Unauthenticated Users**
-- **3 free requests** per day
+- **3 lifetime requests** (not per day - once used, they're gone forever)
 - **Multiple tracking methods**: Browser fingerprint + Server session + IP address
 - **95% bypass prevention** for casual users
 
 ### **Authenticated Users**
-- **8 total requests** (3 free + 5 additional)
+- **3 bonus requests** (if never used while unauthenticated)
+- **5 daily requests** (resets every day at midnight)
 - **Persistent tracking** across login sessions
 - **Industry-standard protection** used by major companies
 
