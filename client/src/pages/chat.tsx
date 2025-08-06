@@ -94,7 +94,7 @@ export default function ChatPage() {
         
         // Show dev mode indicator if applicable
         if (data.devMode) {
-          console.log("Development mode active - using mock responses");
+          // Development mode active - using mock responses
         }
       } else {
         // Handle specific error types
@@ -126,7 +126,6 @@ export default function ChatPage() {
         setMessages(prev => [...prev, errorMessageObj]);
       }
     } catch (error) {
-      console.error("Error:", error);
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
         content: "🌐 Network error. Please check your connection and try again.",

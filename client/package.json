@@ -1,6 +1,7 @@
 {
-  "name": "client",
-  "version": "0.1.0",
+  "name": "ai-chat-assistant",
+  "version": "1.0.0",
+  "description": "A modern AI chat application with robust rate limiting and browser fingerprinting",
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack",

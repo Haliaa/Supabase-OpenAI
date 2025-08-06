@@ -75,7 +75,6 @@ export default function LoginPage() {
     });
 
     if (error) {
-      console.error("Google login error:", error.message);
       // Show UI error if needed
     }
   };

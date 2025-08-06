@@ -29,11 +29,8 @@ export async function getBrowserFingerprint(): Promise<string> {
     // Cache the result
     cachedFingerprint = result.visitorId;
     
-    console.log('Browser fingerprint generated:', cachedFingerprint);
     return cachedFingerprint;
   } catch (error) {
-    console.error('Error generating browser fingerprint:', error);
-    
     // Fallback: generate a basic fingerprint
     const fallbackFingerprint = generateFallbackFingerprint();
     cachedFingerprint = fallbackFingerprint;

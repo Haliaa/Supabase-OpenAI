@@ -87,19 +87,16 @@ export default async function handler(
       if (error) {
         console.error("Auth error:", error);
         // Don't fail the request for auth errors, just continue as unauthenticated
-        console.log("Continuing as unauthenticated user due to auth error");
       } else {
         user_id = data?.user?.id;
         isAuthenticated = true;
-        console.log(`Authenticated user: ${user_id}`);
       }
     } catch (error) {
       console.error("Auth error:", error);
       // Don't fail the request for auth errors, just continue as unauthenticated
-      console.log("Continuing as unauthenticated user due to auth error");
     }
   } else {
-    console.log("No valid authorization token provided, continuing as unauthenticated user");
+    // No valid authorization token provided, continuing as unauthenticated user
   }
 
   const ip = getClientIp(req);
@@ -167,16 +164,6 @@ export default async function handler(
       // Total count = authenticated requests + max of unauthenticated requests
       const unauthenticatedCount = Math.max(fingerprintCount, sessionCount, ipCount);
       currentCount = authCount + unauthenticatedCount;
-      
-      console.log(`Authenticated user ${user_id} tracking:`, {
-        authCount,
-        unauthenticatedCount,
-        fingerprint: fingerprint ? fingerprint.substring(0, 8) + '...' : 'none',
-        sessionId: sessionId.substring(0, 8) + '...',
-        ip: ip,
-        counts: { authCount, fingerprintCount, sessionCount, ipCount },
-        totalCount: currentCount
-      });
 
       if (currentCount >= AUTH_LIMIT) {
         return res.status(429).json({ 
@@ -231,14 +218,6 @@ export default async function handler(
 
       // Use the maximum count (most restrictive)
       currentCount = Math.max(fingerprintCount, sessionCount, ipCount);
-      
-      console.log(`Unauthenticated user tracking:`, {
-        fingerprint: fingerprint ? fingerprint.substring(0, 8) + '...' : 'none',
-        sessionId: sessionId.substring(0, 8) + '...',
-        ip: ip,
-        counts: { fingerprintCount, sessionCount, ipCount },
-        maxCount: currentCount
-      });
 
       if (currentCount >= UNAUTH_LIMIT) {
         return res.status(429).json({ 
@@ -298,7 +277,6 @@ export default async function handler(
     // If database insertion failed, we need to count this request manually
     if (!insertSuccess) {
       currentCount += 1;
-      console.log(`Database insertion failed, manually counting request. New count: ${currentCount}`);
     } else {
       // If insertion was successful, increment the count to reflect the current request
       currentCount += 1;
@@ -315,7 +293,6 @@ export default async function handler(
 
   // Call OpenAI API
   try {
-    console.log(`Using AI model: ${AI_MODEL}`);
     
     const openaiRes = await fetch(
       "https://api.openai.com/v1/chat/completions",
@@ -408,7 +385,6 @@ export default async function handler(
     // If database insertion failed, we need to count this request manually
     if (!insertSuccess) {
       currentCount += 1;
-      console.log(`Database insertion failed, manually counting request. New count: ${currentCount}`);
     } else {
       // If insertion was successful, increment the count to reflect the current request
       currentCount += 1;
