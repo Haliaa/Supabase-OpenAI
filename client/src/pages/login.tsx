@@ -61,7 +61,7 @@ export default function LoginPage() {
           setLoginError(error.message);
       }
     } else {
-      router.push("/chat");
+      router.push("/ask-ai");
     }
   };
 
@@ -69,7 +69,7 @@ export default function LoginPage() {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: "http://localhost:3000/chat", // or your deployed domain
+        redirectTo: "http://localhost:3000/ask-ai", // or your deployed domain
       },
     });
 

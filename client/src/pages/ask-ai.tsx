@@ -3,7 +3,7 @@ import { supabase } from "../services/supabaseClient";
 import Header from "../components/Header";
 import Footer from "@/components/Footer";
 
-export default function ChatPage() {
+export default function AskAIPage() {
   const [input, setInput] = useState("");
   const [response, setResponse] = useState("");
   const [user, setUser] = useState<any>(null);
@@ -15,7 +15,7 @@ export default function ChatPage() {
   }, []);
 
   const sendMessage = async () => {
-    const res = await fetch("/api/chat", {
+    const res = await fetch("/api/ask-ai", {
       method: "POST",
       body: JSON.stringify({ message: input, userId: user?.id }),
     });

@@ -30,11 +30,11 @@ export default function Header() {
         {/* Desktop Menu */}
         <nav className="hidden md:flex space-x-6 items-center">
           <Link
-            href="/chat"
+            href="/ask-ai"
             className="flex items-center gap-1 text-gray-700 dark:text-gray-200 hover:text-blue-600 dark:hover:text-blue-400"
           >
             <MessageCircleMore size={18} />
-            Chat
+            Ask AI
           </Link>
 
           {!user ? (
@@ -70,11 +70,11 @@ export default function Header() {
       {menuOpen && (
         <div className="md:hidden mt-2 space-y-2 px-2 pb-4 border-t border-gray-200 dark:border-zinc-700">
           <Link
-            href="/chat"
+            href="/ask-ai"
             className="flex items-center gap-2 text-gray-700 dark:text-gray-200 hover:text-blue-600 dark:hover:text-blue-400"
           >
             <MessageCircleMore size={18} />
-            Chat
+            Ask AI
           </Link>
 
           {!user ? (

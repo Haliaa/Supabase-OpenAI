@@ -12,8 +12,8 @@ export default function Footer() {
         </div>
 
         <div className="flex flex-col gap-2 text-sm text-gray-300">
-          <a href="/chat" className="hover:text-white transition">
-            AI Chat
+          <a href="/ask-ai" className="hover:text-white transition">
+            Ask AI
           </a>
           <a href="/login" className="hover:text-white transition">
             Login
