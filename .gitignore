@@ -5,9 +5,7 @@ yarn-debug.log*
 yarn-error.log*
 
 # Environment variables
-.env.development.local
-.env.test.local
-.env.production.local
+.env*
 
 # Server environment variables
 server/.env
@@ -36,4 +34,3 @@ pids
 *.pid.lock
 
 .DS_Store
-config.bat
